@@ -65,7 +65,7 @@ class ProductController extends Controller {
       const updateProductResult = await ProductModel.updateOne({ _id: product._id }, { $set: data })
       if (updateProductResult.modifiedCount == 0) throw { status: HttpStatus.INTERNAL_SERVER_ERROR, message: "خطای داخلی" }
       return res.status(HttpStatus.OK).json({
-        statusCode: HttpStatus.OK,
+        statusCode: HttpStatus.OK, 
         data : {
           message: "به روز رسانی باموفقیت انجام شد"
         }
