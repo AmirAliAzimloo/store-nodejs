@@ -18,7 +18,6 @@ const ProductBlackList = {
   LENGTH: "length",
   HEIGHT: "height",
   COLORS: "colors"
-  
 }
 Object.freeze(ProductBlackList)
 class ProductController extends Controller {
