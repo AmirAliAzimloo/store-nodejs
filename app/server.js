@@ -1,17 +1,22 @@
 const express = require("express");
-const path = require("path");
 const { default: mongoose } = require("mongoose");
-const createError = require("http-errors");
 const morgan = require("morgan");
+const path = require("path");
+const createError = require("http-errors");
 const swaggerUI = require("swagger-ui-express");
 const swaggerJsDoc = require("swagger-jsdoc");
 const cors = require("cors")
-
-
-const { AllRoutes } = require("./router/router");
-
+const ExpressEjsLayouts = require("express-ejs-layouts")
 require("dotenv").config()
-
+const { AllRoutes } = require("./router/router");
+const { initialSocket } = require("./utils/initSocket");
+const { socketHandler } = require("./socket.io");
+const session = require("express-session")
+const cookieParser = require("cookie-parser");
+const { COOKIE_PARSER_SECRET_KEY } = require("./utils/constans");
+const { clientHelper } = require("./utils/client");
+const { uploadFile } = require("./utils/multer");
+const fileUpload = require("express-fileupload");
 module.exports = class Application {
   #app = express();
   #DB_URI;
@@ -20,13 +25,14 @@ module.exports = class Application {
     this.#PORT = PORT;
     this.#DB_URI = DB_URI;
     this.configApplication();
+    this.initClientSession()
+    this.initTemplateEngine();
     this.initRedis();
     this.connectToMongoDB();
     this.createServer();
     this.createRoutes();
     this.errorHandling();
   }
-
   configApplication() {
     this.#app.use(cors())
     this.#app.use(morgan("dev"));
@@ -77,56 +83,75 @@ module.exports = class Application {
       )
     );
   }
-
   createServer() {
     const http = require("http");
     const server = http.createServer(this.#app)
+    const io = initialSocket(server)
+    socketHandler(io)
     server.listen(this.#PORT, () => {
       console.log("run > http://localhost:" + this.#PORT);
     });
   }
-
   connectToMongoDB() {
-    mongoose.connect(this.#DB_URI).then(() => {
-        console.log("connected to DB.");
-    }).catch(err => {
-        console.log(err?.message ?? "Failed DB connection");
-    })
-      mongoose.connection.on("connected", () => {
-        console.log("mongoose connected to DB");
-      });
-      mongoose.connection.on("disconnected", () => {
-        console.log("mongoose connection is disconnected");
-      });
-      process.on("SIGINT", async () => {
-        await mongoose.connection.close();
-        console.log("disconnected");
-        process.exit(0);
-      });
+    mongoose.connect(this.#DB_URI, (error) => {
+      if (!error) return console.log("conected to MongoDB");
+      return console.log(error.message);
+    });
+    mongoose.connection.on("connected", () => {
+      console.log("mongoose connected to DB");
+    });
+    mongoose.connection.on("disconnected", () => {
+      console.log("mongoose connection is disconnected");
+    });
+    process.on("SIGINT", async () => {
+      await mongoose.connection.close();
+      console.log("disconnected");
+      process.exit(0);
+    });
   }
-
   initRedis(){
     require("./utils/initRedis")
   }
-
+  initTemplateEngine(){
+    this.#app.use(ExpressEjsLayouts)
+    this.#app.set("view engine", "ejs");
+    this.#app.set("views", "resource/views");
+    this.#app.set("layout extractStyles", true);
+    this.#app.set("layout extractScripts", true);
+    this.#app.set("layout", "./layouts/master");
+    this.#app.use((req, res, next) => {
+      this.#app.locals = clientHelper(req, res);
+      next()
+    })
+  }
+  initClientSession(){
+    this.#app.use(cookieParser(COOKIE_PARSER_SECRET_KEY))
+    this.#app.use(session({
+      secret: COOKIE_PARSER_SECRET_KEY,
+      resave: true,
+      saveUninitialized: true,
+      cookie: {
+        secure: true
+      }
+    }))
+  }
   createRoutes() {
     this.#app.use(AllRoutes);
   }
-
   errorHandling() {
     this.#app.use((req, res, next) => {
-        next(createError.NotFound("آدرس مورد نظر یافت نشد"));
+      next(createError.NotFound("آدرس مورد نظر یافت نشد"));
+    });
+    this.#app.use((error, req, res, next) => {
+      const serverError = createError.InternalServerError();
+      const statusCode = error.status || serverError.status;
+      const message = error.message || serverError.message;
+      return res.status(statusCode).json({
+        statusCode,
+        errors: {
+          message,
+        },
       });
-      this.#app.use((error, req, res, next) => {
-        const serverError = createError.InternalServerError();
-        const statusCode = error.status || serverError.status;
-        const message = error.message || serverError.message;
-        return res.status(statusCode).json({
-          statusCode,
-          errors: {
-            message,
-          },
-        });
-      });
+    });
   }
 };

@@ -68,7 +68,7 @@
  *                                      example: 340
  *                                  teacher:
  *                                      type: string
- *                                      example: "erfan yousefi"
+ *                                      example: "Amir Ali Azimloo"
  */
 
 /**

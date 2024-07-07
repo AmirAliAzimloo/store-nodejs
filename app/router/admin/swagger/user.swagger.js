@@ -9,7 +9,7 @@
  *                  first_name:
  *                      type: string
  *                      description: the first_name of user
- *                      example: Erfan
+ *                      example: Amir Ali
  *                  last_name:
  *                      type: string
  *                      description: the last_name of user
@@ -17,10 +17,10 @@
  *                  email:
  *                      type: string
  *                      description: the email of user
- *                      example: erfanyousefi@gmail.com
+ *                      example: amiraliazimloo123@gmail.com
  *                  username:
  *                      type: string
- *                      example: erfanyousefi
+ *                      example: AmirAliAzimloo
  *                      description: the username of user
  *                      
  */
