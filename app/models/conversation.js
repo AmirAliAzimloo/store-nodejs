@@ -15,7 +15,6 @@ const roomSchema = new mongoose.Schema({
     image: {type: String},
     messages: {type: [messageSchema], default: []},
     locations: {type: [LocationSchema], default: []},
-
 })
 const conversationSchema = new mongoose.Schema({
     title: {type: String, required: true},
